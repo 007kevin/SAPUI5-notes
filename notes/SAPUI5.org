@@ -1,0 +1,726 @@
+* XML Views
+  *convetions*
+  - View names are capitalized
+  - All views are stored in the view folder
+  - Names of XML views always end with *.view.xml
+  - The default XML namespace is sap.m
+  - Other XML namespaces use the last part of the SAP 
+    namespace as alias (for example, mvc for sap.ui.core.mvc
+
+  webapp/view/App.view.xml
+  #+BEGIN_SRC xml
+    <mvc:View
+       xmlns="sap.m"
+       xmlns:mvc="sap.ui.core.mvc">
+       <Text text="Hello World"/>
+    </mvc:View>
+  #+END_SRC
+  The XML tags are mapped to controls, and the attributes are mapped
+  to the properties of the controls
+
+  webapp/index.html
+  #+BEGIN_SRC html
+    <!DOCTYPE html>
+    <html>
+       <head>
+          <meta http-equiv="X-UA-Compatible" content="IE=edge">
+          <meta charset="utf-8">
+          <title>Walkthrough</title>
+          <script
+             id="sap-ui-bootstrap"
+             src="/resources/sap-ui-core.js"
+             data-sap-ui-theme="sap_belize"
+             data-sap-ui-libs="sap.m"
+             data-sap-ui-compatVersion="edge"
+             data-sap-ui-preload="async"
+             data-sap-ui-resourceroots='{
+                "sap.ui.demo.wt": "./"
+             }' >
+          </script>
+          <script>
+             sap.ui.getCore().attachInit(function () {
+                sap.ui.xmlview({
+                   viewName : "sap.ui.demo.wt.view.App"
+                }).placeAt("content");
+             });
+          </script>
+       </head>
+       <body class="sapUiBody" id="content">
+       </body>
+    </html>  
+  #+END_SRC
+
+* Controllers
+  *conventions*
+  - Controller names are capitalized
+  - Controllers carry the same name as the related view 
+    (if there is a 1:1 relationship)
+  - Event handlers are prefixed with on
+  - Controller names always end with *.controller.js
+
+
+  
+  webapp/view/App.view.xml
+  #+BEGIN_SRC xml
+    <mvc:View
+       controllerName="sap.ui.demo.wt.controller.App"
+       xmlns="sap.m"
+       xmlns:mvc="sap.ui.core.mvc">
+       <Button
+          text="Say Hello"
+          press="onShowHello"/>
+    </mvc:View>
+  #+END_SRC
+  We specify name of the controller conencted to the view via 'controllerName'.
+  A view however, doesn't need an explictly assigned controller. If a controller
+  is specified, it is *instantiated after the view is loaded*.
+
+  webapp/controller/App.controller.js
+  #+BEGIN_SRC javascript
+    sap.ui.define([
+       "sap/ui/core/mvc/Controller"
+    ], function (Controller) {
+       "use strict";
+       return Controller.extend("sap.ui.demo.wt.controller.App", {
+          onShowHello : function () {
+             // show a native JavaScript alert
+             alert("Hello World");
+          }
+       });
+    });
+  #+END_SRC
+  
+* Modules
+  *conventions*
+  - Use *sap.ui.define* for controllers and all other JavaScript modules 
+    to define a global namespace. With the namespace, the object can 
+    be addressed throughout the application.
+  - Use *sap.ui.require* for asynchronously loading dependencies but 
+    without declaring a namespace, for example code that just needs to
+    be executed, but does not need to be called from other code.
+  - Use the name of the artifact to load for naming the function 
+    parameters (without namespace).
+  - In SAPUI5 resources are often referred to as modules.
+  
+  /webapp/controller/App.controller.js
+  #+BEGIN_SRC javascript
+    sap.ui.define([
+       "sap/ui/core/mvc/Controller",
+       "sap/m/MessageToast"
+    ], function (Controller, MessageToast) {
+       "use strict";
+       return Controller.extend("sap.ui.demo.wt.controller.App", {
+          onShowHello : function () {
+             MessageToast.show("Hello World");
+          }
+       });
+    });
+  #+END_SRC
+  Extend the array of required modules with the fully qualified path to 
+  sap.m.MessageToast.
+  Once both modules are loaded, the callback function is called and we can
+  make use of both objects by accessing parameters passed on to the function.
+
+  *NOTE* 
+  The order of modules defined is the order of paramters in the callback
+  function!
+
+* JSON Model
+  *conventions*
+  - Use Hungarian notation for variable names
+    i.e oData, oModel
+  
+  webapp/controller/App.controller.js
+  #+BEGIN_SRC javascript
+    sap.ui.define([
+       "sap/ui/core/mvc/Controller",
+       "sap/m/MessageToast",
+       "sap/ui/model/json/JSONModel"
+    ], function (Controller, MessageToast, JSONModel) {
+       "use strict";
+       return Controller.extend("sap.ui.demo.wt.controller.App", {
+          onInit : function () {
+             // set data model on view
+             var oData = {
+                recipient : {
+                   name : "World"
+                }
+             };
+             var oModel = new JSONModel(oData);
+             this.getView().setModel(oModel);
+          },
+          onShowHello : function () {
+             MessageToast.show("Hello World");
+          }
+       });
+    });
+  #+END_SRC
+
+  To use the model from within the XML view, we call the setModel function on 
+  the view and pass on newly created model
+
+  webapp/view/App.view.xml
+  #+BEGIN_SRC xml
+    <mvc:View
+       controllerName="sap.ui.demo.wt.controller.App"
+       xmlns="sap.m"
+       xmlns:mvc="sap.ui.core.mvc">
+       <Button
+          text="Say Hello"
+          press="onShowHello"/>
+       <Input
+          value="{/recipient/name}"
+          description="Hello {/recipient/name}"
+          valueLiveUpdate="true"
+          width="60%"/>
+    </mvc:View>  
+  #+END_SRC
+  
+  curly brackets {...} indicate data is taken from value of the recipient's
+  object name property (called 'data binding')
+
+  webapp/index.html
+  #+BEGIN_SRC html
+      <!DOCTYPE html>
+    <html>
+       ...
+       <head>
+             ...
+             data-sap-ui-compatVersion="edge"   
+             ...
+       </head>
+       ...
+    </html>
+  #+END_SRC
+  To allow complex binding syntax to combine text and bingind pattern,
+  one must specify data-sap-ui-compatVersion="edge".
+  ex.
+  To allow "Hello {/recipient/name}" instead of just "{/recipient/name}"
+
+
+  *Note* 
+  You can either use data-sap-ui-compatVersion="edge" or
+  data-sap-ui-bindingSyntax="complex" in the script. By setting the
+  “edge” compatibility mode, the complex binding syntax is
+  automatically enabled. The edge mode automatically enables
+  compatibility features that otherwise would have to be enabled
+  manually.
+
+* Internationalizaton (i18n)
+  *conventions*
+  - The resource model for internationalization is called the i18n model.
+  - The default filename is i18n.properties.
+  - Resource bundle keys are written in (lower) camelCase.
+  - Resource bundle values can contain parameters like {0}, {1}, {2}, …
+  - Never concatenate strings that are translated, always use placeholders.
+  - Use Unicode escape sequences for special characters.
+
+  A way to translate text into different languages. Once approach is 
+  to store text in a central place so as to easily translate to other
+  languages
+
+  webapp/i18n/i18n.properties
+  #+BEGIN_SRC 
+  showHelloButtonText=Say Hello
+  helloMsg=Hello {0}
+  #+END_SRC
+  
+  One can add any number of parameters to the text using {n} (starting with 0)
+
+  controller/App.controller.js
+  #+BEGIN_SRC javascript
+    sap.ui.define([
+       "sap/ui/core/mvc/Controller",
+       "sap/m/MessageToast",
+       "sap/ui/model/json/JSONModel",
+       "sap/ui/model/resource/ResourceModel"
+    ], function (Controller, MessageToast, JSONModel, ResourceModel) {
+       "use strict";
+       return Controller.extend("sap.ui.demo.wt.controller.App", {
+         onInit : function () {
+             // set data model on view
+             var oData = {
+                recipient : {
+                   name : "World"
+                }
+             };
+             var oModel = new JSONModel(oData);
+             this.getView().setModel(oModel);
+         // set i18n model on view
+             var i18nModel = new ResourceModel({
+                bundleName: "sap.ui.demo.wt.i18n.i18n"
+             });
+             this.getView().setModel(i18nModel, "i18n");
+          },
+          onShowHello : function () {
+             // read msg from i18n model
+             var oBundle = this.getView().getModel("i18n").getResourceBundle();
+             var sRecipient = this.getView().getModel().getProperty("/recipient/name");
+             var sMsg = oBundle.getText("helloMsg", [sRecipient]);
+             // show message
+             MessageToast.show(sMsg);
+          }
+       });
+    });
+  #+END_SRC
+  
+  /webapp/view/App.view.xml
+  #+BEGIN_SRC xml
+     <mvc:View
+       controllerName="sap.ui.demo.wt.controller.App"
+       xmlns="sap.m"
+       xmlns:mvc="sap.ui.core.mvc">
+       <Button
+          text="{i18n>showHelloButtonText}"
+          press="onShowHello"/>
+       <Input
+          value="{/recipient/name}"
+          description="Hello {/recipient/name}"
+          valueLiveUpdate="true"
+          width="60%"/>
+    </mvc:View>
+  #+END_SRC
+
+  In the XML view, we use data binding to connect the button text to
+  the showHelloButtonText property in the i18n model. A resource
+  bundle is a flat structure, therefore the preceding slash (/) can be
+  omitted for the path.
+
+  *Note* 
+  The description text is not completely localized in this
+  example for illustration purposes. To be on the safe side, we would
+  have to use a similar mechanism as in the controller to use a string
+  from the resource bundle and replace parts of it. This can be done
+  with the jQuery.sap.formatMessage formatter.
+
+  Furthermore, i18n files only impact client-side application
+  texts. Texts that are loaded from back-end systems can appear in all
+  languages that are supported by the back-end system.
+
+* Components
+  - Encapsulate all UI assets in a component inpedenent of index.html file
+  - Independent reusable parts used in SAPUI5
+    
+  webapp/Component.js
+  #+BEGIN_SRC javascript
+    sap.ui.define([
+       "sap/ui/core/UIComponent",
+       "sap/ui/model/json/JSONModel",
+       "sap/ui/model/resource/ResourceModel"
+    ], function (UIComponent, JSONModel, ResourceModel) {
+       "use strict";
+       return UIComponent.extend("sap.ui.demo.wt.Component", {
+                metadata : {
+            rootView: "sap.ui.demo.wt.view.App"
+        },
+          init : function () {
+             // call the init function of the parent
+             UIComponent.prototype.init.apply(this, arguments);
+             // set data model
+             var oData = {
+                recipient : {
+                   name : "World"
+                }
+             };
+             var oModel = new JSONModel(oData);
+             this.setModel(oModel);
+
+             // set i18n model
+             var i18nModel = new ResourceModel({
+                bundleName : "sap.ui.demo.wt.i18n.i18n"
+             });
+             this.setModel(i18nModel, "i18n");
+          }
+       });
+    });
+  #+END_SRC
+
+  The init function is automatically invoked when component is instantiated.
+  Component inherits from base class 'sap.ui.core.UIComponent'.
+  
+  *Must make the super call to the init function of the base class in the
+  overridden init method*
+
+  The metadata section defined reference to root view so that instead of
+  directly displaying root view in index.html, the component manges the display
+  of the app view. 
+
+  In init, data models are instantiated like the app controller. Beware models
+  directly set in component and not on the root view of the components. However
+  nested controls inherit the models from their parent controls, so the models
+  will be available on the view as well!
+
+  webapp/index.html
+  #+BEGIN_SRC html
+    <!DOCTYPE html>
+    <html>
+       <head>
+          <meta http-equiv="X-UA-Compatible" content="IE=edge">
+          <meta charset="utf-8">
+          <Title>Walkthrough</Title>
+          <Script
+             Id="sap-ui-bootstrap"
+             src="/resources/sap-ui-core.js"
+             data-sap-ui-theme="sap_belize"
+             data-sap-ui-libs="sap.m"
+             data-sap-ui-bindingSyntax="complex"
+             data-sap-ui-compatVersion="edge"
+             data-sap-ui-preload="async"
+             data-sap-ui-resourceroots='{
+                "sap.ui.demo.wt": "./"
+             }' >
+          </script>
+          <script>
+             sap.ui.getCore().attachInit(function () {
+                new sap.ui.core.ComponentContainer({
+                   name : "sap.ui.demo.wt"
+                }).placeAt("content");
+
+             });
+          </script>
+       </head>
+       <body class="sapUiBody" id="content">
+       </body>
+    </html>
+  #+END_SRC
+
+  Index page now instantiates the component instead of app view.
+  sap.ui.core.ComponentContrainer instantiates the component by searching
+  for a Component.js file in the namespace that is passed in as an argument.
+
+  Component automatically loads the root view we have defined above and displays
+  it. 
+
+* Descriptor for Applications (manifest.json)
+  *conventions*
+  - The descriptor file is named manifest.json and located in the webapp folder.
+  - Use translatable strings for the title and the description of the app.
+
+  Application-specific configuration settings are put in manjfest.json.
+  Not only clearly separates config from app, but required for app to be
+  hosted in FIORI Launchpad. 
+
+  SAP Fiori is like an application container to allow apps to be instantiated
+  without having a local html for bootstrap, rather the descriptor file is parsed
+  and the components are loaded into current html (SPA).
+
+  The manifest file is called the descriptor for applications, components, AKA
+  'descriptor'. It is read by SAPUI5 to instantiate the component. Three important
+  sector defined by the namespaces in the manifest.json file:
+
+  - sap.app :: application specific atttributes
+    - id (mandatory): namespace of application
+    - type: what we want to configure (i.e application)
+    - i18n: path to resource bundle file
+    - title: title in the handlebars syntax referenced from app's resource bundle
+    - description: handlebar syntax referenced from app's resource bundle
+    - applicationVersion: version of app to easily update later
+  - sap.ui :: contributes the following UI-specific attributes:
+    - technology: specify UI technology, in our case SAPUI5
+    - deviceTypes: what devices are supported by the app: desktop, tablet, phone
+      (all true by default)
+    - supportedThemes: array of themes supported by the app
+  - sap.ui5 :: SAPUI5-specific configuration parameters that are automatically
+               processed by SAPUI5. The most important params are:
+    - rootView: if specified, the component will automatically 
+      instantiate the view and use it as the root for this component
+    - dependencies: declare UI libraries used in the application
+    - models: define models that will be automatically instantiated by SAPUI5 when
+      app starts. In the example, we define the local resource bundle here:
+      - the name of the model "i18n" is the json key and bundleName specify 
+        the bundle file by namespace i.e "sap.ui.demo.wt.i18n.i18n"
+  
+  *manifest.json example*
+   #+BEGIN_SRC javascript
+     {
+       "_version": "1.1.0",
+       "sap.app": {
+         "_version": "1.1.0",
+         "id": "sap.ui.demo.wt",
+         "type": "application",
+         "i18n": "i18n/i18n.properties",
+         "title": "{{appTitle}}",
+         "description": "{{appDescription}}",
+         "applicationVersion": {
+           "version": "1.0.0"
+         }
+       },
+       "sap.ui": {
+         "_version": "1.1.0",
+         "technology": "UI5",
+         "deviceTypes": {
+           "desktop": true,
+           "tablet": true,
+           "phone": true
+         },
+         "supportedThemes": [
+           "sap_belize"
+         ]
+       },
+       "sap.ui5": {
+         "_version": "1.1.0",
+         "rootView": "sap.ui.demo.wt.view.App",
+         "dependencies": {
+           "minUI5Version": "1.30",
+           "libs": {
+             "sap.m": {}
+           }
+         },
+         "models": {
+           "i18n": {
+             "type": "sap.ui.model.resource.ResourceModel",
+             "settings": {
+               "bundleName": "sap.ui.demo.wt.i18n.i18n"
+             }
+           }
+         }
+       }
+     }
+   #+END_SRC
+
+  webapp/Component.js
+  #+BEGIN_SRC javascript
+    sap.ui.define([
+       "sap/ui/core/UIComponent",
+       "sap/ui/model/json/JSONModel"
+    ], function (UIComponent, JSONModel) {
+       "use strict";
+       return UIComponent.extend("sap.ui.demo.wt.Component", {
+          metadata : {
+                manifest: "json"
+          },
+          init : function () {
+             // call the init function of the parent
+             UIComponent.prototype.init.apply(this, arguments);
+             // set data model
+             var oData = {
+                recipient : {
+                   name : "World"
+                }
+             };
+             var oModel = new JSONModel(oData);
+             this.setModel(oModel);
+          }
+       });
+    });
+  #+END_SRC
+
+  1) metadata.rootView property is now replaced with metadata.manifest which 
+     defines a reference to the descriptor that will be loaded and parsed 
+     automatically when component is instantiated. 
+  2) This means we no longer need the model instantiation of the resource bundle since
+     the config. entries of descriptor defined the model
+  3) We remove the ResourceModel dependency since it is taken care of in descriptor
+     (manifest) file.
+     
+  *notes* 
+  In previous versions of SAPUI5, additional configuration
+  settings for the app, like the service configuration, the root view,
+  and the routing configuration, had to be added to the metadata
+  section of the Component.js file. As of SAPUI5 version 1.30, we
+  recommend that you define these settings in the manifest.json
+  descriptor file. Apps and examples that were created based on an
+  older SAPUI5 version still use the Component.js file for this
+  purpose - so it is still supported, _but not recommended_.
+
+* Pages and Panels (control aggregation)
+  *conventions* 
+  Do not make implicit use of default aggregations but
+  always declare the aggregation names explicitly in the view. In the
+  example below, the content aggregation could also be omitted as the
+  Panel control declares it as a default, but it makes the view harder
+  to read.
+  
+  webapp/view/App.view.xml
+  #+BEGIN_SRC xml
+    <mvc:View
+       controllerName="sap.ui.demo.wt.controller.App"
+       xmlns="sap.m"
+       xmlns:mvc="sap.ui.core.mvc"
+      displayBlock="true">
+       <App>
+          <pages>
+             <Page title="{i18n>homePageTitle}">
+                <content>
+                   <Panel
+                      headerText="{i18n>helloPanelTitle}">
+                      <content>
+
+                         <Button
+                            text="{i18n>showHelloButtonText}"
+                            press="onShowHello"/>
+                         <Input
+                            value="{/recipient/name}"
+                            description="Hello {/recipient/name}"
+                            valueLiveUpdate="true"
+                            width="60%"/>
+                      </content>
+                   </Panel>
+                </content>
+             </Page>
+          </pages>
+       </App>
+    </mvc:View>  
+  #+End_Src
+
+  input and button field is put inside a containing control called sap.m.Page.
+  the page provides an aggregation of 0..N other controls called content. 
+
+  sap.m.Page itself is placed into the pages aggregation of another control 
+  called sap.m.App which does:
+  - writes useful properties into the header of index.html necessary for proper 
+    display on mobile devices
+  - offers functionality to navigate between pages with animations
+
+  'displayBlock="true"' makes the fullscreen height of view to work properly
+
+  webapp/i18n/i18n.properties
+  #+BEGIN_SRC sh
+    # App Descriptor
+    appTitle=Hello World
+    appDescription=A simple walkthrough app that explains the most important concepts of SAPUI5
+
+    # Hello Panel
+    showHelloButtonText=Say Hello
+    helloMsg=Hello {0}
+    homePageTitle=Walkthrough
+    helloPanelTitle=Hello World
+  #+END_SRC
+
+  
+* Shell controls as Container
+  Use of the shell control as a container used as the root element
+  allows for visual adaptation to device's screens size (i.e 
+  letterbox on desktop screens).
+
+  Customizations such as setting custom background image, custom logo
+  and more are available.
+
+  webapp/index.html
+  #+BEGIN_SRC html
+    <!DOCTYPE html>
+    <html>
+       <head>
+          …
+          <script>
+             sap.ui.getCore().attachInit(function () {
+                new sap.m.Shell({
+                   app : new sap.ui.core.ComponentContainer({
+                      name : "sap.ui.demo.wt",
+                      height : "100%"
+                   })
+                }).placeAt("content");
+             });
+          </script>
+       </head>
+       <body class="sapUiBody" id="content">
+       </body>
+    </html>
+  #+END_SRC
+
+  *note*
+  We do not add the Shell control to the declarative UI definition in
+  the XML view, because apps that run in an external shell, like the
+  SAP Fiori launchpad, there will already be a shell around the
+  component UI.
+* Margins and Paddings
+  *conventions*
+  - Use standard SAPUI5 CSS classes for the layout when possible
+  
+  Before margin and padding /webapp/view/App.view.xml
+  #+BEGIN_SRC xml
+    <mvc:View
+       controllerName="sap.ui.demo.wt.controller.App"
+       xmlns="sap.m"
+       xmlns:mvc="sap.ui.core.mvc"
+      displayBlock="true">
+       <App>
+          <pages>
+             <Page title="{i18n>homePageTitle}">
+                <content>
+                   <Panel
+                      headerText="{i18n>helloPanelTitle}">
+                      <content>
+
+                         <Button
+                            text="{i18n>showHelloButtonText}"
+                            press="onShowHello"/>
+                         <Input
+                            value="{/recipient/name}"
+                            description="Hello {/recipient/name}"
+                            valueLiveUpdate="true"
+                            width="60%"/>
+                      </content>
+                   </Panel>
+                </content>
+             </Page>
+          </pages>
+       </App>
+    </mvc:View>
+  #+END_SRC
+  [[./nomp.png]]
+
+  After margin and padding /webapp/view/App.view.xml
+  #+BEGIN_SRC xml
+    <mvc:View
+        controllerName="sap.ui.demo.wt.controller.App"
+        xmlns="sap.m"
+        xmlns:mvc="sap.ui.core.mvc"
+        displayBlock="true">
+        <App>
+            <pages>
+                <Page title="{i18n>homePageTitle}">
+                    <content>
+                        <Panel
+                            headerText="{i18n>helloPanelTitle}"
+                            class="sapUiResponsiveMargin" 
+                            width="auto"> <!-- new -->
+                            <content>
+                                <Button
+                                    text="{i18n>showHelloButtonText}"
+                                    press="onShowHello"
+                                    class="sapUiSmallMarginEnd"/> <!-- new -->
+                                <Input
+                                    value="{/recipient/name}"
+                                    valueLiveUpdate="true"
+                                    width="60%"/>
+                                <Text
+                                    text="Hello {/recipient/name}"
+                                    class="sapUiSmallMargin"/> <!-- new -->
+
+                            </content>
+                        </Panel>
+                    </content>
+                </Page>
+            </pages>
+        </App>
+    </mvc:View>  
+  #+END_SRC
+  [[./mp.png]]
+  
+  *sapUiResponsiveMargin* adds space around the panel and auto since margin would
+  otherwise be added to the default width of 100% and exceed the page size
+
+  margins can be added to all kinds of controls. Space is added between button 
+  and input field with *sapUiSmallMarginEnd*
+
+  To format output text individually, we remove attibute of the input field and
+  add a new Text control with same value. We use *sapUiSmallMargin* to align
+  it with other contents.
+
+  One could also add the standard padding classes to layout the inner parts
+  of the panel but since it brings padding by default, not necessary.
+
+  
+* Custom CSS and Theme Colors
+  *CAUTION* As stated in the Compatibility Rules, the HTML and CSS
+  generated by SAPUI5 is not part of the public API and may change in
+  patch and minor releases. If you decide to override styles, you have
+  the obligation to test and update your modifications each time
+  SAPUI5 is updated. A prerequisite for this is that you have control
+  over the version of SAPUI5 being used, for example in a standalone
+  scenario. This is not possible when running your app in the SAP
+  Fiori launchpad where SAPUI5 is centrally loaded for all apps. As
+  such, SAP Fiori launchpad apps should not override styles.
+
+
