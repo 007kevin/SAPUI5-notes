@@ -1279,3 +1279,96 @@ p* Custom CSS and Theme Colors
       ]
     }
   #+END_SRC
+
+  #+BEGIN_SRC js
+      {
+      …
+      "sap.ui5": {
+        "_version": "1.1.0",
+        "rootView": "sap.ui.demo.wt.view.App",
+
+        "dependencies": {
+          "minUI5Version": "1.30",
+          "libs": {
+            "sap.m": {}
+          }
+        },
+        "models": {
+          "i18n": {
+            "type": "sap.ui.model.resource.ResourceModel",
+            "settings": {
+              "bundleName": "sap.ui.demo.wt.i18n.i18n"
+            }
+          },
+          "invoice": {
+            "type": "sap.ui.model.json.JSONModel",
+            "uri": "Invoices.json"
+          }
+        }
+      }
+    }
+  #+END_SRC
+
+  We add model 'invoice' to the manifest.json. We set the type since 
+  we want a JSONModel. With this config, the component will automatically
+  instantiate a new JSONModel which loads the invoice data from
+  Invoices.json file. The instantiated model is named 'invoice' and 
+  the named model will be visible throughout the app.
+
+  webapp/view/App.view.xml
+  #+BEGIN_SRC xml
+      <mvc:View
+       controllerName="sap.ui.demo.wt.controller.App"
+       xmlns="sap.m"
+       xmlns:mvc="sap.ui.core.mvc"
+       displayBlock="true" >
+       <App class="myAppDemoWT">
+          <pages>
+             <Page title="{i18n>homePageTitle}">
+                <headerContent>
+                   <Button
+                      icon="sap-icon://hello-world"
+                      press="onOpenDialog"/>
+                </headerContent>
+                <content>
+                   <mvc:XMLView viewName="sap.ui.demo.wt.view.HelloPanel"/>
+                   <mvc:XMLView viewName="sap.ui.demo.wt.view.InvoiceList"/>
+                </content>
+             </Page>
+          </pages>
+       </App>
+    </mvc:View>
+  #+END_SRC
+  
+  A second view is added to the content aggregation
+
+  #+BEGIN_SRC xml
+    <mvc:View
+       xmlns="sap.m"
+       xmlns:mvc="sap.ui.core.mvc">
+       <List
+          headerText="{i18n>invoiceListTitle}"
+          class="sapUiResponsiveMargin"
+          width="auto"
+          items="{invoice>/Invoices}" >
+          <items>
+             <ObjectListItem
+                title="{invoice>Quantity} x {invoice>ProductName}"/>
+          </items>
+       </List>
+    </mvc:View>
+  #+END_SRC
+
+  the list control defines a custom header test. The items aggregation of
+  the list is bound to the root path of Invoices.json. 
+
+  Since we defined a named model via manifest.json, we must prefix each
+  binding definition with the identifier 'invoice'
+
+  In the 'items' aggregation, we define the template for the list that'll
+  be automatically repeated for each invoice of the test data. More
+  precisely, we use an ObjectListItem to create a control for each
+  aggregated child of the items aggregation. This is achieved by defining
+  a relative path  (without / in the beginning) and works because we have
+  bound the items aggregation via *items={invoice/Invoices}* to invoices.
+  
