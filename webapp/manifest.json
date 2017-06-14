@@ -42,7 +42,7 @@
 	    }
     },
     "resources": {
-        "css": [2
+        "css": [
             {
                 "uri": "css/style.css"
             }

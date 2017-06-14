@@ -6,7 +6,12 @@
   <App class="myAppDemoWT">
     <pages>
       <Page title="{i18n>homePageTitle}">
-        <content>
+		<headerContent>
+		  <Button
+			  icon="sap-icon://hello-world"
+			  press="onOpenDialog"/>
+		</headerContent>
+		<content>
           <mvc:XMLView viewName="sap.ui.demo.wt.view.HelloPanel"/>
         </content>
       </Page>

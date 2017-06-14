@@ -890,8 +890,6 @@ p* Custom CSS and Theme Colors
   
   text bundle is extended by two new texts for open butten and dialog's close button.
 
-  
-  
 * Fragment Callbacks
   User interaction to close the dialog box
 
@@ -1033,6 +1031,9 @@ p* Custom CSS and Theme Colors
 
   Add icon control to content aggregation of dialog. Also define size and medium margin on it
 * Reuse of fragments (e.g Dialog)
+  *conventions*
+  - Put all assets used across multiple controllers in separate modules
+  
   demonstation of reusing fragment across views or whole app.
 
   note previously:
@@ -1136,9 +1137,145 @@ p* Custom CSS and Theme Colors
 
     });
   #+END_SRC
-  
-  
 
+  HelloDialog reuse object extends the base object to inherit core functionality of OpenUI5.
+  Note a local helper object, rather than controller is passed to xmlfragment as the third
+  parameter to handle 'onCloseDialog' event.
   
+  When the view is being destroyed, we must remove the dialog from the dependent
+  aggregation of the view. Otherwise, the reuse dialog would be automatically destroyed.
+  We want the reuse dialog to be destroyed when whole application component is being 
+  dstroyed. 
+
+  -> in the 'exit' lifecycle method of SAPUI5 that is called when a component is being
+  destroyed, we destroy the internal dialog instance if it has been created. Thus, the
+  lifecycle of the dialog is properly connected to application's lifecycle.
+
+  The open method contains the dialog's instantiation. oView is used to connect
+  the current view to the dialog, and the open method of this object is later called
+  in the controller.
   
-    
+  webapp/controller/HelloPanel.controller.js
+  #+BEGIN_SRC javascript
+      sap.ui.define([
+        "sap/ui/core/mvc/Controller",
+        "sap/m/MessageToast"
+    ], function (Controller, MessageToast) {
+        "use strict";
+        return Controller.extend("sap.ui.demo.wt.controller.HelloPanel", {
+            onShowHello : function () {
+                // read msg from i18n model
+                var oBundle = this.getView().getModel("i18n").getResourceBundle();
+                var sRecipient = this.getView().getModel().getProperty("/recipient/name");
+                var sMsg = oBundle.getText("helloMsg", [sRecipient]);
+                // show message
+                MessageToast.show(sMsg);
+            },
+            onOpenDialog : function () {
+                this.getOwnerComponent().openHelloDialog();
+            }
+        });
+    });
+  #+END_SRC
+  
+  onOpenDialog method accesses its component via getOwnerComponent
+
+  webapp/view/App.view.xml
+  #+BEGIN_SRC xml
+      <mvc:View
+        controllerName="sap.ui.demo.wt.controller.App"
+        xmlns="sap.m"
+        xmlns:mvc="sap.ui.core.mvc"
+        displayBlock="true">
+        <App class="myAppDemoWT">
+            <pages>
+                <Page title="{i18n>homePageTitle}">
+                    <headerContent>
+                        <Button
+                            icon="sap-icon://hello-world"
+                            press="onOpenDialog"/>
+                    </headerContent>
+                    <content>
+                        <mvc:XMLView viewName="sap.ui.demo.wt.view.HelloPanel"/>
+                    </content>
+                </Page>
+            </pages>
+        </App>
+    </mvc:View>
+  #+END_SRC
+  
+  Add button to header area of the app view to show the reuse of hello world dialog.
+  When pressing, the buttong will open a dialog as with the button previously
+  created in the panel.
+  
+  webapp/controller/App.controller.js
+  #+BEGIN_SRC javascript
+    ap.ui.define([
+        "sap/ui/core/mvc/Controller"
+    ], function (Controller) {
+        "use strict";
+
+        return Controller.extend("sap.ui.demo.wt.controller.App", {
+
+            onOpenDialog : function () {
+                this.getOwnerComponent().openHelloDialog();
+            }
+        });
+
+    });
+  #+END_SRC
+
+  We add the method 'onOpenDialog' also to the app controller so that the dialog will
+  open with a reference to the current view.
+* Aggregation Binding
+  We will display invoice data in JSON format to be displayed in a panel
+  
+  [[./aggbinding.png]]
+
+  webapp/Invoices.json
+  #+BEGIN_SRC js
+      {
+      "Invoices": [
+        {
+          "ProductName": "Pineapple",
+          "Quantity": 21,
+          "ExtendedPrice": 87.2000,
+          "ShipperName": "Fun Inc.",
+          "ShippedDate": "2015-04-01T00:00:00",
+          "Status": "A"
+        },
+        {
+          "ProductName": "Milk",
+          "Quantity": 4,
+          "ExtendedPrice": 9.99999,
+          "ShipperName": "ACME",
+          "ShippedDate": "2015-02-18T00:00:00",
+          "Status": "B"
+        },
+        {
+          "ProductName": "Canned Beans",
+          "Quantity": 3,
+          "ExtendedPrice": 6.85000,
+          "ShipperName": "ACME",
+          "ShippedDate": "2015-03-02T00:00:00",
+          "Status": "B"
+        },
+        {
+          "ProductName": "Salad",
+          "Quantity": 2,
+          "ExtendedPrice": 8.8000,
+          "ShipperName": "ACME",
+          "ShippedDate": "2015-04-12T00:00:00",
+          "Status": "C"
+        },
+        {
+          "ProductName": "Bread",
+          "Quantity": 1,
+          "ExtendedPrice": 2.71212,
+          "ShipperName": "Fun Inc.",
+          "ShippedDate": "2015-01-27T00:00:00",
+          "Status": "A"
+        }
+      ]
+    }
+  #+END_SRC
