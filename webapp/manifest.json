@@ -40,5 +40,12 @@
 		        }
 	        }
 	    }
+    },
+    "resources": {
+        "css": [2
+            {
+                "uri": "css/style.css"
+            }
+        ]
     }
 }
