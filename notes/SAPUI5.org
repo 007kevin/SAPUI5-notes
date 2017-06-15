@@ -1,4 +1,33 @@
 #+STARTUP: inlineimages
+* QUESTIONS
+  A list a questions I gathered while going through SAPUI5 tutorial
+  
+  *Q:* 
+  Do nested views inherit the parent controller if a controller 
+  is not explicitly defined via controllerName property of the 
+  child view? What about models?
+  
+  e.g 
+  If an eventHandler of the child view is defined in the parent, will
+  the triggered event be resolved in the parent controller?
+
+  - Answer :: No, as stated in the docs views and controllers form 1:1 
+              relationship
+
+  e.g
+  If a model is defined in the parent view's controller,
+  will the child view be able to access the model?
+
+  - Answer :: Yes, if the model is defined in the parent controller,
+              the child will be able to access the model EVEN IF
+              the child explicitly defined its own controller. 
+              Note:
+              - If the model is defined in the child controller,
+                the parent cannot access that model.
+              - If model is defined in the component/manifest,
+                the model is available anywhere (since model
+                will be instantiated into the RootView?)
+  
 * XML Views
   *convetions*
   - View names are capitalized
@@ -1372,3 +1401,87 @@ p* Custom CSS and Theme Colors
   a relative path  (without / in the beginning) and works because we have
   bound the items aggregation via *items={invoice/Invoices}* to invoices.
   
+* Data Types
+  *conventions*
+  - use data types instead of custom formatters whenever possible
+  
+  SAPUI5 data types to format price with a locale-dependent decimal separator and
+  two digits after the separator
+
+  
+  webapp/view/InvoiceList.view.xml
+  #+BEGIN_SRC xml
+    <mvc:View
+       controllerName="sap.ui.demo.wt.controller.InvoiceList"
+       xmlns="sap.m"
+       xmlns:mvc="sap.ui.core.mvc">
+       <List
+          headerText="{i18n>invoiceListTitle}"
+          class="sapUiResponsiveMargin"
+          width="auto"
+          items="{invoice>/Invoices}">
+          <items>
+             <ObjectListItem
+            title="{invoice>Quantity} x {invoice>ProductName}"
+            number="{
+                parts: [{path: 'invoice>ExtendedPrice'}, {path: 'view>/currency'}],
+                type: 'sap.ui.model.type.Currency',
+                formatOptions: {
+                    showMeasure: false
+                }
+            }"
+            numberUnit="{view>/currency}"/>
+        </items>
+       </List>
+    </mvc:View>
+  #+END_SRC
+
+  *footnote* property and attribute are used interchangeably in these notes
+
+  We apply the currency data type on the number attribute by setting the type
+  attribute of the binding syntax to sap.ui.model.type.Currency
+
+  The special binding syntax of the number attribute is call "Calculated fields", 
+  allowing binding of multiple properties from different models to a single 
+  property of a control. Properties bound from different models are called
+  "parts".
+
+  In the example above, the property of the ObjectListItem control is number and
+  the bound properties (parts) are retrieved from two different models 'invoice'
+  and 'view'
+
+  We add controller for InvoiceList and use currency property as second part
+  of the binding syntax. The sap.ui.model.type.Currency type will handle 
+  formatting of the price.
+
+  Also, the formatting option 'showMeasure' is set to false to hide the currency
+  code in the property 'number' since it is passed to ObjectListItem control as
+  a seprate property 'numberUnit'
+
+  /webapp/controller/InvoiceList.controller.js
+  #+BEGIN_SRC js
+      sap.ui.define([
+        "sap/ui/core/mvc/Controller",
+        "sap/ui/model/json/JSONModel"
+    ], function (Controller, JSONModel) {
+        "use strict";
+
+        return Controller.extend("sap.ui.demo.wt.controller.InvoiceList", {
+
+            onInit : function () {
+                var oViewModel = new JSONModel({
+                    currency: "EUR"
+                });
+                this.getView().setModel(oViewModel, "view");
+            }
+
+        });
+    });
+  #+END_SRC
+  
+  Since currency code is not part of the data model, we degine a view model 
+  in the controller of invoice list to bind to the formatter of the
+  number field. 
+
+  View models can hold any configuration options assigned to a control
+  to bind properties such as visibility.
