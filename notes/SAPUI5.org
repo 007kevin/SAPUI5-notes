@@ -1485,3 +1485,252 @@ p* Custom CSS and Theme Colors
 
   View models can hold any configuration options assigned to a control
   to bind properties such as visibility.
+* Expression Binding
+  *conventions*
+  - Only use expressio binding for trivial calculations
+  
+  Sometimes the predefined types of SAPUI5 are not flexiable enough.
+  Expressions allow for cutom calculation of formatting of the view.
+  
+  webapp/view/InvoiceList.xml
+  #+BEGIN_SRC xml
+    <mvc:View
+    controllerName="sap.ui.demo.wt.controller.InvoiceList"
+    xmlns="sap.m"
+       xmlns:mvc="sap.ui.core.mvc">
+       <List
+          headerText="{i18n>invoiceListTitle}"
+          class="sapUiResponsiveMargin"
+          width="auto"
+          items="{invoice>/Invoices}" >
+          <items>
+             <ObjectListItem
+                title="{invoice>Quantity} x {invoice>ProductName}"
+                number="{
+            parts: [{path: 'invoice>ExtendedPrice'}, {path: 'view>/currency'}],
+            type: 'sap.ui.model.type.Currency',
+            formatOptions: {
+                showMeasure: false
+            }
+            }"
+            numberUnit="{view>/currency}"
+            numberState="{= ${invoice>ExtendedPrice} > 50 ? 'Error' : 'Success' }"/>
+          </items>
+       </List>
+    </mvc:View>
+  #+END_SRC
+
+  The numberState property added to the declarative view introduces the syntax starting
+  with the symbol =. = is called an expression and can be used for calculation logic 
+  such as ternary operator.
+
+  A model binding inside an expression binding has to be escaped with $. 
+
+  Expressions are limited to a particular set of operations that help formatting the data
+* Custom Formatters
+  Custom formatting function for more complex logic for formatting properties
+  of the data model.
+
+  webapp/model/formatter.js
+  #+BEGIN_SRC js
+      sap.ui.define([], function () {
+        "use strict";
+        return {
+            statusText: function (sStatus) {
+                var resourceBundle = this.getView().getModel("i18n").getResourceBundle();
+                switch (sStatus) {
+                    case "A":
+                        return resourceBundle.getText("invoiceStatusA");
+                    case "B":
+                        return resourceBundle.getText("invoiceStatusB");
+                    case "C":
+                        return resourceBundle.getText("invoiceStatusC");
+                    default:
+                        return sStatus;
+                }
+            }
+        };
+    });
+  #+END_SRC
+
+  We place formatter file in model folder since formatterrs work on data properties
+  and format them for display on the UI. We also move Invoices.json file to the model.
+
+  This time, no need to extend any base object byut just return a JS object with 
+  the formatter functions inside the sap.ui.define call.
+
+  statusText function returns human readable text from the resourceBundle
+
+  webapp/controller/InvoiceList.controller.js
+  #+BEGIN_SRC js
+      sap.ui.define([
+        "sap/ui/core/mvc/Controller",
+        "sap/ui/model/json/JSONModel",
+        "sap/ui/demo/wt/model/formatter"
+    ], function (Controller, JSONModel, formatter) {
+        "use strict";
+        return Controller.extend("sap.ui.demo.wt.controller.InvoiceList", {
+            formatter: formatter,
+            onInit : function () {
+                var oViewModel = new JSONModel({
+                    currency: "EUR"
+                });
+                this.getView().setModel(oViewModel, "view");
+            }
+        });
+    });
+  #+END_SRC
+
+  formatter functions are loaded to the InvoiceList.controller.js. Dependency
+  is added to our custom formatter module. This controller simply stores the loaded
+  formatter functions in the local property formatter to be able to access them in
+  the view.
+
+  webapp/view/InvoiceList.view.xml
+  #+BEGIN_SRC xml
+      <mvc:View
+        controllerName="sap.ui.demo.wt.controller.InvoiceList"
+        xmlns="sap.m"
+        xmlns:mvc="sap.ui.core.mvc">
+        <List
+            headerText="{i18n>invoiceListTitle}"
+            class="sapUiResponsiveMargin"
+            width="auto"
+            items="{invoice>/Invoices}">
+            <items>
+                <ObjectListItem
+                    title="{invoice>Quantity} x {invoice>ProductName}"
+                    number="{
+                        parts: [{path: 'invoice>ExtendedPrice'}, {path: 'view>/currency'}],
+                        type: 'sap.ui.model.type.Currency',
+                        formatOptions: {
+                            showMeasure: false
+                        }
+                    }"
+                    numberUnit="{view>/currency}"
+                    numberState="{= ${invoice>ExtendedPrice} > 50 ? 'Error' : 'Success' }">
+                    <firstStatus>
+                        <ObjectStatus text="{
+                            path: 'invoice>Status',
+                            formatter: '.formatter.statusText'
+                        }"/>
+                    </firstStatus>
+                </ObjectListItem>
+
+            </items>
+        </List>
+    </mvc:View>
+  #+END_SRC
+
+  firstStatus aggregation is added to ObjectListItem control that'll display the invoice status.
+  Custom formatter function is specified with the reservered property 'formatter' 
+  binding syntax. The "." in the formatter means the function is looked up in the controller
+  of the current view. Since the property formatter is defined in the controller, it
+  can be accessed by '.formatter.statusText'.
+
+  
+* Filtering and searching
+  - search field to define a filter that only shows items
+    matching the term
+
+    [[./filtering.png]]
+
+  webapp/view/InvoiceList.view.xml
+  #+BEGIN_SRC xml
+      <mvc:View
+       controllerName="sap.ui.demo.wt.controller.InvoiceList"
+       xmlns="sap.m"
+       xmlns:mvc="sap.ui.core.mvc">
+       <List
+          id="invoiceList"
+          class="sapUiResponsiveMargin"
+          width="auto"
+          items="{invoice>/Invoices}" >
+          <headerToolbar>
+             <Toolbar>
+                <Title text="{i18n>invoiceListTitle}"/>
+                <ToolbarSpacer/>
+                <SearchField width="50%" search="onFilterInvoices" selectOnFocus="false"/>
+             </Toolbar>
+          </headerToolbar>
+          <items>
+             <ObjectListItem>
+            …
+             </ObjectListItem/>
+          </items>
+       </List>
+    </mvc:View>
+  #+END_SRC
+
+  extend the view by adding a search control that we add to list of invoices.
+  notes:
+  - since search field is part of list header, each change on the list binding
+    will trigger rerendering of the while list, including the search field.
+  - selectOnFocus=false ensures cursor statys at the same position.
+
+  headerToolbar aggregation replaces title property. A toolbar control is way more
+  flexible. sap.m.Title control on the left, sap.m.SearchField on the right with
+  a sap.m.ToolbarSpacer in between.
+  
+  webapp/controller/InvoiceList.controller.js
+  #+BEGIN_SRC js
+      sap.ui.define([
+        "sap/ui/core/mvc/Controller",
+        "sap/ui/model/json/JSONModel",
+        "sap/ui/demo/wt/model/formatter",
+        "sap/ui/model/Filter",
+        "sap/ui/model/FilterOperator"
+    ], function (Controller, JSONModel, formatter, Filter, FilterOperator) {
+        "use strict";
+        return Controller.extend("sap.ui.demo.wt.controller.InvoiceList", {
+            formatter: formatter, 
+            onInit : function () {
+                var oViewModel = new JSONModel({
+                    currency: "EUR"
+                });
+                this.getView().setModel(oViewModel, "view");
+            },
+            onFilterInvoices : function (oEvent) {
+
+                // build filter array
+                var aFilter = [];
+                var sQuery = oEvent.getParameter("query");
+                if (sQuery) {
+                    aFilter.push(new Filter("ProductName", FilterOperator.Contains, sQuery));
+                }
+
+                // filter binding
+                var oList = this.getView().byId("invoiceList");
+                var oBinding = oList.getBinding("items");
+                oBinding.filter(aFilter);
+            }
+        });
+    });
+  #+END_SRC
+
+  #+RESULTS:
+
+  Two new dependencies introduced for filtering. 
+  Filter - holds the configuration for the filter action
+  FilterOperator - helper type needed to specify filter
+
+  Event handlers always reveice an event argument than can be
+  used to acceess the parameters the event provides. In this case,
+  search field defines a parameter 'query' we can access via 
+  getParameter("query")
+
+  If query not empty, add filter object to the empty array of filters.
+  This makes sure we see all list elements again. By adding more filters
+  to this array we can search by more than one data filter. This this example,
+  we search ProductName path and specify a filter operator that will search for
+  the given query string.
+
+  The list is access with the ID specified in the view since the control
+  is automatically prefixed (namespaced) by the view ID (hence byId 
+  helper function)
+
+  On the list control, we access the binding of the aggregation 'items'
+  to filter it with our newly constructed filter object. 
+
+  *note* FilterOperator.Contains is not case-sensitive
+  

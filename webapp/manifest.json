@@ -41,7 +41,7 @@
 	        },
             "invoice": {
 		        "type": "sap.ui.model.json.JSONModel",
-		        "uri": "Invoices.json"
+		        "uri": "model/Invoices.json"
 	        }
 	    }
     },
